@@ -26,15 +26,15 @@ func (cfg *apiConfig) handlerRefreshTokens(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Create JWT Token
-	jwtToken, err := auth.MakeJWT(user.ID, cfg.tokenSecret, time.Hour)
+	// Create Access Token
+	accessToken, err := auth.MakeJWT(user.ID, cfg.tokenSecret, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Couldn't validate token", err)
 		return
 	}
 
-	// Respond with JWT Token
+	// Respond with Access Token
 	respondWithJSON(w, http.StatusOK, response{
-		Token: jwtToken,
+		Token: accessToken,
 	})
 }
