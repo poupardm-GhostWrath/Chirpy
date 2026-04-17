@@ -3,6 +3,8 @@ package auth
 import (
 	"time"
 	"errors"
+	"strings"
+	"net/http"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/google/uuid"
@@ -63,4 +65,16 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	return id, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	header := headers.Get("Authorization")
+	if header == "" {
+		return "", errors.New("No Auth header included in request")
+	}
+	splitHeader := strings.Split(header, " ")
+	if len(splitHeader) < 2 || splitHeader[0] != "Bearer" {
+		return "", errors.New("Malformed authorization header")
+	}
+	return splitHeader[1], nil
 }

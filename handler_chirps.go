@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/poupardm-GhostWrath/Chirpy/internal/database"
+	"github.com/poupardm-GhostWrath/Chirpy/internal/auth"
 )
 
 type Chirp struct {
@@ -22,17 +23,30 @@ type Chirp struct {
 func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body 	string 		`json:"body"`
-		UserID 	uuid.UUID	`json:"user_id"`
+	}
+
+	// Check Token
+	tokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err.Error(), err)
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenString, cfg.tokenSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, err.Error(), err)
+		return
 	}
 
 	// Decode Request
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
 	}
+
+	
 
 	// Checking Body Length & Clean Body
 	cleanedBody, err := validateChirp(params.Body)
@@ -44,7 +58,7 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 	// Create Chirp Entry in DB
 	dbChirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body: cleanedBody,
-		UserID: params.UserID,
+		UserID: userID,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)

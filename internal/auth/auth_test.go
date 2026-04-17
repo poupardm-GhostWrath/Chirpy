@@ -3,6 +3,8 @@ package auth
 import (
 	"testing"
 	"time"
+	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -113,6 +115,43 @@ func TestValidateJWT(t *testing.T) {
 			}
 			if !tt.wantErr && userID != user {
 				t.Errorf("ValidateJWT() expects %v, got %v", user, userID)
+			}
+		})
+	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	tokenString := "Monkey"
+	header1 := make(http.Header)
+	header2 := make(http.Header)
+	headerValue := strings.Join([]string{"Bearer", tokenString}, " ")
+	header1.Add("Authorization", headerValue)
+
+	tests := []struct {
+		name	string
+		header	http.Header
+		wantErr	bool
+	}{
+		{
+			name:		"Valid Header",
+			header: 	header1,
+			wantErr:	false,
+		},
+		{
+			name:		"No Header",
+			header:		header2,
+			wantErr:	true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token_string, err := GetBearerToken(tt.header)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetBearerToken() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && token_string != tokenString {
+				t.Errorf("GetBearerToken() expects %v, got %v", tokenString, token_string)
 			}
 		})
 	}
