@@ -46,8 +46,6 @@ func (cfg *apiConfig) handlerChirpsCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	
-
 	// Checking Body Length & Clean Body
 	cleanedBody, err := validateChirp(params.Body)
 	if err != nil {

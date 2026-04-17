@@ -6,13 +6,19 @@ import (
 	"time"
 
 	"github.com/poupardm-GhostWrath/Chirpy/internal/auth"
+	"github.com/poupardm-GhostWrath/Chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email 				string 	`json:"email"`
 		Password 			string 	`json:"password"`
-		ExpiresInSeconds	int		`json:"expires_in_seconds"`
+	}
+
+	type response struct {
+		User
+		Token			string	`json:"token"`
+		RefreshToken	string	`json:"refresh_token"`
 	}
 
 	// Decode Request
@@ -38,26 +44,36 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set Time Duration
-	var expireTime time.Duration = time.Hour
-	if params.ExpiresInSeconds > 0 && params.ExpiresInSeconds <= 3600 {
-		expireTime = time.Duration(params.ExpiresInSeconds) * time.Second
-	}
-
-	// Create Token
-	token, err := auth.MakeJWT(dbUser.ID, cfg.tokenSecret, expireTime)
+	// Create JWT Token
+	jwtToken, err := auth.MakeJWT(dbUser.ID, cfg.tokenSecret, time.Hour)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't create token", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT token", err)
 		return
 	}
 
+	// Create Refresh Token
+	refreshToken := auth.MakeRefreshToken()
+	dbRefreshToken, err := cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token: refreshToken,
+		UserID: dbUser.ID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't save Refresh Token", err)
+		return
+	}
+
+
+
 	// Respond with User
-	respondWithJSON(w, http.StatusOK, User{
-		ID: dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email: dbUser.Email,
-		Token: token,
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID: dbUser.ID,
+			CreatedAt: dbUser.CreatedAt,
+			UpdatedAt: dbUser.UpdatedAt,
+			Email: dbUser.Email,
+		},
+		Token: jwtToken,
+		RefreshToken: dbRefreshToken.Token,
 	})
 }
 
