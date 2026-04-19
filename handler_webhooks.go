@@ -7,9 +7,10 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/poupardm-GhostWrath/Chirpy/internal/auth"
 )
 
-func (cfg *apiConfig) handlerPolkaWebhooks(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerWebhook(w http.ResponseWriter, r *http.Request) {
 	const defaultEvent = "user.upgraded"
 
 	type parameters struct {
@@ -19,10 +20,21 @@ func (cfg *apiConfig) handlerPolkaWebhooks(w http.ResponseWriter, r *http.Reques
 		} `json:"data"`
 	}
 
+	// Check Auth Header
+	key, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find api key", err)
+		return
+	}
+	if key != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "API key is invalid", err)
+		return
+	}
+
 	// Decode Request
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return

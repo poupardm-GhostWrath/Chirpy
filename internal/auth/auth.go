@@ -37,3 +37,15 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 	return splitHeader[1], nil
 }
+
+func GetAPIKey(headers http.Header) (string, error) {
+	header := headers.Get("Authorization")
+	if header == "" {
+		return "", errors.New("No Auth header included in request")
+	}
+	splitHeader := strings.Split(header, " ")
+	if len(splitHeader) < 2 || splitHeader[0] != "ApiKey" {
+		return "", errors.New("Malformed authorization header")
+	}
+	return splitHeader[1], nil
+}

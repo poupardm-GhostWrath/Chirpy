@@ -13,10 +13,11 @@ import (
 )
 
 type apiConfig struct {
-	fileserverHits atomic.Int32
-	db *database.Queries
-	platform string
-	tokenSecret string
+	fileserverHits 	atomic.Int32
+	db 				*database.Queries
+	platform 		string
+	tokenSecret 	string
+	polkaKey 		string
 }
 
 func main() {
@@ -43,6 +44,11 @@ func main() {
 		log.Fatal("TOKEN_SECRET must be set")
 	}
 
+	polka := os.Getenv("POLKA_KEY")
+	if polka == "" {
+		log.Fatal("POLKA_KEY must be set")
+	}
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %s", err)
@@ -55,6 +61,7 @@ func main() {
 		db: dbQueries,
 		platform: dbPlatform,
 		tokenSecret: ts,
+		polkaKey: polka,
 	}
 
 	mux := http.NewServeMux()
@@ -71,7 +78,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefreshTokens)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeTokens)
-	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerPolkaWebhooks)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerWebhook)
 	
 	
 	// Admin
