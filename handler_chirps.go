@@ -6,6 +6,7 @@ import (
 	"time"
 	"strings"
 	"errors"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/poupardm-GhostWrath/Chirpy/internal/database"
@@ -100,14 +101,11 @@ func getCleanedBody(body string, badWords map[string]struct{}) string {
 }
 
 func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
-	authorID := r.URL.Query().Get("author_id")
-	authorUUID, err := uuid.Parse(authorID)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to parse authorID", err)
-		return
-	}
-
+	queries := r.URL.Query()
+	authorID := queries.Get("author_id")
+	
 	dbChirps := []database.Chirp{}
+	var err error
 	if authorID == "" {
 		dbChirps, err = cfg.db.GetChirps(r.Context())
 		if err != nil {
@@ -115,6 +113,11 @@ func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		authorUUID, err := uuid.Parse(authorID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Failed to parse authorID", err)
+			return
+		}
 		dbChirps, err = cfg.db.GetChirpsByUser(r.Context(), authorUUID)
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
@@ -132,6 +135,15 @@ func (cfg *apiConfig) handlerChirpsGet(w http.ResponseWriter, r *http.Request) {
 			UserID: dbChirp.UserID,
 		})
 	}
+
+	sortQuery := queries.Get("sort")
+	if sortQuery != "" {
+		if sortQuery == "desc" {
+			sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt)})
+		}
+	}
+	
+
 	respondWithJSON(w, http.StatusOK, chirps)
 }
 
